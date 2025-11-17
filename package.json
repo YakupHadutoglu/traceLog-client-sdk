@@ -1,0 +1,30 @@
+{
+  "name": "tracelog-client-sdk",
+  "version": "0.1.2",
+  "description": "Views of the official SDK for the TraceLog SaaS platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "tracelog",
+    "sdk",
+    "client-sdk",
+    "logging",
+    "log-management",
+    "tracelog-saas"
+  ],
+  "author": "Yakup Hadutoğlu <yakuphad2004@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.13.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1"
+  }
+}
