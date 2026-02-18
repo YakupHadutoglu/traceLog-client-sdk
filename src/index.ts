@@ -10,29 +10,30 @@ interface LogPayload {
 export class LogStreamer {
     private apiKey: string;
     private httpClient: AxiosInstance;
-    private endpoint: string = 'https://apiKey.tracelog.dev/logs/trace-log-projesinin-adresiyle-değişecek';
+
+    private baseUrl: string = 'http://localhost:3001/api/log';
 
     constructor(apikey: string) {
         if (!apikey) {
-            throw new Error('API key is required to initialize Trace Log LogStreamer')
+            throw new Error('[TraceLog] API key is required.')
         }
         this.apiKey = apikey;
 
         this.httpClient = axios.create({
-            baseURL: this.endpoint,
+            baseURL: this.baseUrl,
             headers: {
                 "Authorization": `ApiKey ${this.apiKey}`,
                 "Content-Type": "application/json",
-
             }
         });
     }
+
     public info(message: string, metadata: object = {}) {
-        return this.sendLog('info', message, metadata);
+        this.sendLog('info', message, metadata);
     }
 
     public error(message: string, metadata: object = {}) {
-        return this.sendLog('error', message, metadata);
+        this.sendLog('error', message, metadata);
     }
 
     private async sendLog(level: 'info' | 'warn' | 'error', message: string, metadata: object) {
@@ -40,18 +41,16 @@ export class LogStreamer {
             message,
             level,
             metadata,
-            timestamp: new Date().toLocaleDateString()
+            timestamp: new Date().toISOString()
         }
+
         try {
-            await this.httpClient.post(this.endpoint , payload);
+            await this.httpClient.post('/ingest', payload);
+
         } catch (error) {
             if (axios.isAxiosError(error)) {
-                console.error('[Trace Log Api Client] Log could be not sent', error.response?.data || error.message);
-            } else {
-                console.error('[Trace Log Api Client] Log could not be sent', error);
+                console.error('[TraceLog Error] Sunucuya ulaşılamadı:', error.message);
             }
         }
     }
 }
-
-
