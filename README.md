@@ -1,77 +1,146 @@
 # tracelog-client-sdk
 
-This is the official Node.js client library for the TraceLog (TraceLog API's address or website) platform.
+The official, high-performance Node.js client library for the TraceLog platform.
 
-This SDK allows you to easily send logs and metrics from your Node.js applications to the TraceLog API. It eliminates the complexity of issuing manual POST requests with axios.
+TraceLog SDK goes beyond simple logging. It automatically tracks HTTP request durations, redacts sensitive data (like passwords) before they leave your server, and provides global context management for advanced filtering.
 
-### Özellikler
+Say goodbye to complex manual logging and missing performance metrics!
+
+## Features
+
+- **Express HTTP Middleware:** Automatically tracks HTTP method, URL, status code, client IP, and exact request duration (ms).
+- **Auto-Redaction (Security First):** Automatically masks sensitive keys (e.g., `password`, `token`, `credit_card`) with `[REDACTED]` before sending data to the backend.
+- **Global Context:** Inject custom data (like environment, app version, or user IDs) into all logs automatically.
+- **Graceful Shutdown:** Catches `SIGTERM/SIGINT` to securely log system shutdowns before your Node.js process exits.
+- **TypeScript Ready:** Built with TypeScript, providing out-of-the-box type safety, intelligent autocompletion, and zero friction.
+
 ---
--Simple and intuitive API (.info(), .error())
-
--Automatic API Key management
-
--ypeScript support (includes type definitions)
-
--Asynchronous log sending in the background
 
 ## Installation
+
 You can install the package in your project using NPM or Yarn:
-```
+
+```bash
 npm install tracelog-client-sdk
 ```
-🛠️ Usage
-Using the SDK is very simple. First, import the LogStreamer class and create an instance with your API Key.
+## Quick Start
+1. Initialization
+Import the SDK and initialize it with your Project ID and API Key.
 
-JavaScript
---
+### JavaScript (CommonJS):
+
+### JavaScript
 ```
+const { TraceLog } = require('tracelog-client-sdk');
 
-//JavaScript (CommonJS)
-const { LogStreamer } = require('tracelog-client-sdk');
+const logger = new TraceLog({
+    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'YOUR_API_KEY',
+    backendUrl: '[https://api.yourdomain.com](https://api.yourdomain.com)' // Optional: Defaults to localhost for local testing
+});
+```
+### TypeScript (ES Modules):
 
-//TypeScript (ES Modules)
-import { LogStreamer } from 'tracelog-client-sdk';
+### TypeScript
+```
+import { TraceLog } from 'tracelog-client-sdk';
 
-//1. Start the SDK with your API Key
-//(You must get this API Key from your LogStream panel)
-const logger = new LogStreamer('YOUR_SECRET_API_KEY_HERE');
+const logger = new TraceLog({
+    projectId: 'YOUR_PROJECT_ID',
+    apiKey: 'YOUR_API_KEY'
+});
+```
+---
+### 2. Basic Logging
+You can log messages with standard levels (info, warn, error, fatal, debug) and attach custom metadata.
 
-//2. Start sending logs!
-
-//A log at the information level
-logger.info('User logged in successfully', {
-  userId: 'user-123',
-  process: 'auth'
+### JavaScript
+```
+// A log at the information level
+logger.log('info', 'User successfully authenticated', {
+    userId: 'user_123',
+    method: 'OAuth2'
 });
 
-//A log at the error level
-try {
-  //... Error-potential code ...
-  throw new Error('Database connection broken');
-} catch (error) {
-  logger.error(error.message, {
-    statusCode: 500,
-    component: 'database-service'
+// The SDK automatically masks sensitive fields!
+logger.log('warn', 'Failed login attempt', {
+    email: 'test@test.com',
+    password: 'my_secret_password' // This will securely be sent as [REDACTED]
 });
-}
 ```
-Sending logs is done asynchronously in the background and does not prevent your main application from running.
+
+## Advanced Features
+Auto HTTP Tracking (Express Middleware)
+Track every single request in your Express app without writing manual logs. It calculates the exact response time (durationMs) and detects errors automatically.
+
+### JavaScript
+```
+const express = require('express');
+const { TraceLog, expressMiddleware } = require('tracelog-client-sdk');
+
+const app = express();
+const logger = new TraceLog({ projectId: '123', apiKey: 'sk_...' });
+
+// Add this before your routes to track all incoming traffic!
+app.use(expressMiddleware(logger));
+
+app.get('/', (req, res) => {
+    res.send('TraceLog is watching this route!');
+});
+
+app.listen(8080);
+```
+
+## Global Context Management
+If you want to attach specific data (like the current environment or app version) to every log sent from your application, use the context manager.
+
+### JavaScript
+```
+// Set it once (e.g., on app startup or user login)
+logger.setContext({
+    environment: 'production',
+    appVersion: '2.1.0'
+});
+
+// All subsequent logs will automatically include { environment: 'production', appVersion: '2.1.0' }.
+logger.log('info', 'Database connected successfully');
+
+// To clear context when needed:
+// logger.clearContext();
+```
 
 ## API Reference
--new LogStreamer(apiKey)
-Starts the SDK client.
+```
+new TraceLog(options)
+```
+### Starts the SDK client.
 
--apiKey (string, Required): Your API key obtained from your LogStream panel.
+- ***projectId (string | number, Required):*** Your TraceLog project ID.
 
--.info(message, [metadata])
-Sends a log at info level.
+- ***apiKey (string, Required):*** Your secure API key obtained from your TraceLog panel.
 
--message (string, Required): The main log message to send.
+- ***backendUrl (string, Optional):*** Custom backend URL for self-hosted instances.
+```
+logger.log(level, message, [metadata])
+```
+### Sends an asynchronous log to the TraceLog API.
+---
+- ***level (string, Required):*** 'info' | 'warn' | 'error' | 'fatal' | 'debug'
 
--metadata (object, Optional): Extra JSON data to be added to the log (eg: user ID, session ID, etc.).
--.error(message, [metadata])
-It sends a log at error level.
+- ***message (string, Required):*** The main log message.
 
--message (string, Required): Error message.
+- ***metadata (object, Optional):*** Extra JSON data to be added to the log.
+```
+logger.setContext(contextData)
+```
 
--metadata (object, Optional): Extra context information about the error (e.g. stack trace, request ID, etc.).
+### Appends default metadata to all future logs.
+---
+- ***contextData (object, Required):*** JSON object containing the context data.
+```
+expressMiddleware(loggerInstance)
+```
+Returns an Express middleware function that auto-logs HTTP traffic, calculates durations, and maps HTTP status codes to log levels.
+
+
+
