@@ -1,6 +1,6 @@
 {
   "name": "tracelog-client-sdk",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "Views of the official SDK for the TraceLog SaaS platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -24,9 +24,11 @@
   "author": "Yakup Hadutoğlu <yakuphad2004@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.13.2"
+    "axios": "^1.13.2",
+    "express": "^5.2.1"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^24.10.1"
   }
 }
