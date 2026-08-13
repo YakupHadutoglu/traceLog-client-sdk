@@ -1,6 +1,6 @@
 {
   "name": "tracelog-client-sdk",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Views of the official SDK for the TraceLog SaaS platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
