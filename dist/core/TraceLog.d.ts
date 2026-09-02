@@ -16,10 +16,13 @@ export declare class TraceLog {
     private flushInterval;
     private timer;
     private isFlushing;
+    private flushPromise;
     constructor(options: TraceLogOptions);
     setContext(contextData: Record<string, any>): void;
     clearContext(): void;
     log(level: 'info' | 'warn' | 'error' | 'fatal' | 'debug', message: string, metadata?: any): Promise<void>;
+    private _triggerFlush;
+    private _doFlush;
     flush(): Promise<void>;
     private startTimer;
     private setupGracefulShutdown;

@@ -16,27 +16,21 @@ export class TraceLog {
     private globalContext: Record<string, any> = {};
     private sensitiveKeys: string[] = ['password', 'token', 'secret', 'credit_card', 'authorization', 'ssn'];
 
-    //! Batching veriables
-
     private logBuffer: any[] = [];
     private batchSize: number;
     private flushInterval: number;
     private timer: NodeJS.Timeout | null = null;
     private isFlushing: boolean = false;
+    private flushPromise: Promise<void> | null = null;
 
     constructor(options: TraceLogOptions) {
-
         this.projectId = options.projectId;
         this.apiKey = options.apiKey;
         this.backendUrl = options.backendUrl || 'http://localhost:3000';
-
-
         this.batchSize = options.batchSize || 50;
         this.flushInterval = options.flushInterval || 5000;
-
         this.startTimer();
         this.setupGracefulShutdown();
-
     }
 
     public setContext(contextData: Record<string, any>) {
@@ -62,18 +56,22 @@ export class TraceLog {
             this.logBuffer.push(logEntry);
 
             if (this.logBuffer.length >= this.batchSize) {
-                await this.flush();
+                this._triggerFlush();
             }
         } catch (error: any) {
             console.error('[TraceLog SDK Error]: Log could not be sent:', error.message);
         }
     }
 
-    public async flush() {
+    private _triggerFlush(): void {
+        if (this.isFlushing || this.logBuffer.length === 0) return;
+        this.flushPromise = this._doFlush();
+    }
+
+    private async _doFlush(): Promise<void> {
         if (this.logBuffer.length === 0 || this.isFlushing) return;
 
         this.isFlushing = true;
-
         const logsToSend = [...this.logBuffer];
         this.logBuffer = [];
 
@@ -87,26 +85,33 @@ export class TraceLog {
                 timeout: 5000,
             });
         } catch (error: any) {
+            this.logBuffer = [...logsToSend, ...this.logBuffer];
             console.error('[TraceLog SDK Error]: Batch log could not be sent:', error.message);
-            //! For advanced level: In order not to lose the logs that cannot be sent, they will be added to the beginning of the logBuffer (Retry mechanism).
         } finally {
             this.isFlushing = false;
+            this.flushPromise = null;
+            if (this.logBuffer.length >= this.batchSize) {
+                this._triggerFlush();
+            }
         }
+    }
+
+    public async flush(): Promise<void> {
+        if (this.flushPromise) await this.flushPromise;
+        if (this.logBuffer.length === 0) return;
+        await this._doFlush();
     }
 
     private startTimer() {
         this.timer = setInterval(() => {
-            this.flush();
-        },
-            this.flushInterval);
+            this._triggerFlush();
+        }, this.flushInterval);
     }
 
     private setupGracefulShutdown() {
         const handleExit = async (signal: string) => {
             await this.log('fatal', `System Shutdown Triggered: ${signal}`, { action: 'shutdown' });
-
             await this.flush();
-
             if (this.timer) clearInterval(this.timer);
         }
         process.on('SIGTERM', () => handleExit('SIGTERM'));

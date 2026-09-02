@@ -10,10 +10,10 @@ class TraceLog {
     constructor(options) {
         this.globalContext = {};
         this.sensitiveKeys = ['password', 'token', 'secret', 'credit_card', 'authorization', 'ssn'];
-        //! Batching veriables
         this.logBuffer = [];
         this.timer = null;
         this.isFlushing = false;
+        this.flushPromise = null;
         this.projectId = options.projectId;
         this.apiKey = options.apiKey;
         this.backendUrl = options.backendUrl || 'http://localhost:3000';
@@ -40,14 +40,19 @@ class TraceLog {
             };
             this.logBuffer.push(logEntry);
             if (this.logBuffer.length >= this.batchSize) {
-                await this.flush();
+                this._triggerFlush();
             }
         }
         catch (error) {
             console.error('[TraceLog SDK Error]: Log could not be sent:', error.message);
         }
     }
-    async flush() {
+    _triggerFlush() {
+        if (this.isFlushing || this.logBuffer.length === 0)
+            return;
+        this.flushPromise = this._doFlush();
+    }
+    async _doFlush() {
         if (this.logBuffer.length === 0 || this.isFlushing)
             return;
         this.isFlushing = true;
@@ -64,16 +69,27 @@ class TraceLog {
             });
         }
         catch (error) {
+            this.logBuffer = [...logsToSend, ...this.logBuffer];
             console.error('[TraceLog SDK Error]: Batch log could not be sent:', error.message);
-            //! For advanced level: In order not to lose the logs that cannot be sent, they will be added to the beginning of the logBuffer (Retry mechanism).
         }
         finally {
             this.isFlushing = false;
+            this.flushPromise = null;
+            if (this.logBuffer.length >= this.batchSize) {
+                this._triggerFlush();
+            }
         }
+    }
+    async flush() {
+        if (this.flushPromise)
+            await this.flushPromise;
+        if (this.logBuffer.length === 0)
+            return;
+        await this._doFlush();
     }
     startTimer() {
         this.timer = setInterval(() => {
-            this.flush();
+            this._triggerFlush();
         }, this.flushInterval);
     }
     setupGracefulShutdown() {
